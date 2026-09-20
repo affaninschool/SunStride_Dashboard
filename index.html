@@ -1,0 +1,1883 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#0b1220">
+<title>SunStride Smart Station</title>
+<style>
+/* ══════════════════════════════════════════════════════════════
+   DESIGN TOKENS  —  tweak these to re-skin the whole dashboard
+   ══════════════════════════════════════════════════════════════ */
+:root{
+  /* --- palette --- */
+  --bg-deep:      #070b16;
+  --bg:           #0b1220;
+  --panel:        rgba(19,29,50,0.72);
+  --panel-2:      rgba(30,44,72,0.45);
+  --panel-solid:  #131e35;
+
+  --line:         rgba(138,168,220,0.14);
+  --line-2:       rgba(138,168,220,0.30);
+
+  --text:         #e7eefc;
+  --text-2:       #97a9c9;
+  --text-3:       #61729a;
+
+  --solar:        #ffb02e;
+  --solar-2:      #ff8a3d;
+  --solar-soft:   rgba(255,176,46,0.14);
+
+  --piezo:        #2fe3c4;
+  --piezo-2:      #37b6ff;
+  --piezo-soft:   rgba(47,227,196,0.14);
+
+  --ok:           #37d98d;
+  --ok-soft:      rgba(55,217,141,0.13);
+
+  --warn:         #ff7a6b;
+  --warn-soft:    rgba(255,122,107,0.13);
+
+  --accent:       #6f9dff;
+  --accent-soft:  rgba(111,157,255,0.10);
+
+  /* --- geometry --- */
+  --r-sm: 8px;
+  --r-md: 14px;
+  --r-lg: 20px;
+  --r-pill: 999px;
+
+  /* --- spacing --- */
+  --s-1: 6px;
+  --s-2: 10px;
+  --s-3: 16px;
+  --s-4: 22px;
+  --s-5: 32px;
+  --s-6: 44px;
+
+  /* --- effects --- */
+  --shadow-1: 0 8px 24px rgba(0,0,0,0.35);
+  --shadow-2: 0 24px 60px rgba(0,0,0,0.55);
+
+  --font: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto,
+          "Helvetica Neue", Arial, sans-serif;
+  --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+
+  --ease: cubic-bezier(.22,.8,.3,1);
+}
+
+/* ══════════════════════════════════════════════════════════════
+   BASE
+   ══════════════════════════════════════════════════════════════ */
+*{ box-sizing:border-box; }
+[hidden]{ display:none !important; }
+
+html,body{ height:100%; }
+
+body{
+  margin:0;
+  font-family:var(--font);
+  font-size:15px;
+  line-height:1.45;
+  color:var(--text);
+  background:
+    radial-gradient(1100px 620px at 10% -12%, rgba(255,176,46,0.10), transparent 60%),
+    radial-gradient(900px 620px at 102% -4%, rgba(47,227,196,0.09), transparent 58%),
+    radial-gradient(900px 700px at 50% 118%, rgba(111,157,255,0.10), transparent 62%),
+    linear-gradient(180deg, var(--bg) 0%, var(--bg-deep) 100%);
+  background-attachment:fixed;
+  -webkit-font-smoothing:antialiased;
+  -moz-osx-font-smoothing:grayscale;
+}
+
+h1,h2,h3,p{ margin:0; }
+button{ font-family:inherit; }
+
+.mono{ font-family:var(--mono); font-variant-numeric:tabular-nums; }
+
+/* ══════════════════════════════════════════════════════════════
+   1. PRELOADER
+   ══════════════════════════════════════════════════════════════ */
+#preloader{
+  position:fixed; inset:0; z-index:1000;
+  display:flex; flex-direction:column; align-items:center; justify-content:center;
+  gap:26px;
+  background:
+    radial-gradient(700px 460px at 50% 42%, rgba(255,176,46,0.09), transparent 65%),
+    #070b16;
+  transition: opacity .65s var(--ease), visibility .65s var(--ease);
+}
+#preloader.hidden{ opacity:0; visibility:hidden; pointer-events:none; }
+
+.pre-brand{
+  font-size:clamp(20px, 5vw, 30px);
+  font-weight:800;
+  letter-spacing:.44em;
+  text-indent:.44em;
+  background:linear-gradient(100deg,
+      var(--text-3) 18%, #ffffff 40%, var(--solar) 50%, #ffffff 60%, var(--text-3) 82%);
+  background-size:230% 100%;
+  -webkit-background-clip:text;
+  background-clip:text;
+  color:transparent;
+  animation:shimmer 2.4s linear infinite;
+  user-select:none;
+}
+@keyframes shimmer{
+  from{ background-position:190% 0; }
+  to  { background-position:-90% 0; }
+}
+
+.pre-track{
+  position:relative;
+  width:min(320px, 72vw);
+  height:36px;
+  display:flex;
+  align-items:center;
+}
+.pre-rail{
+  position:absolute; left:0; right:0; top:50%;
+  height:2px; transform:translateY(-50%);
+  background:linear-gradient(90deg,
+      transparent, rgba(138,168,220,0.34) 14%,
+      rgba(138,168,220,0.34) 86%, transparent);
+  border-radius:2px;
+}
+.pre-bus{
+  position:absolute; top:50%;
+  transform:translateY(-50%);
+  animation:busRun 1.75s linear infinite;
+  filter:drop-shadow(0 0 10px rgba(255,176,46,0.45));
+}
+@keyframes busRun{
+  0%  { left:0;                          opacity:0; }
+  12% {                                  opacity:1; }
+  88% {                                  opacity:1; }
+  100%{ left:calc(100% - 34px);          opacity:0; }
+}
+
+.pre-caption{
+  font-size:.78rem;
+  letter-spacing:.16em;
+  text-transform:uppercase;
+  color:var(--text-3);
+  animation:captionPulse 1.9s ease-in-out infinite;
+}
+@keyframes captionPulse{
+  0%,100%{ opacity:.45; }
+  50%    { opacity:1; }
+}
+
+/* ══════════════════════════════════════════════════════════════
+   APP SHELL
+   ══════════════════════════════════════════════════════════════ */
+#appContent{
+  opacity:0;
+  transform:translateY(8px);
+  transition:opacity .7s var(--ease) .05s, transform .7s var(--ease) .05s;
+}
+#appContent.ready{ opacity:1; transform:none; }
+
+/* ══════════════════════════════════════════════════════════════
+   2. HEADER BAR
+   ══════════════════════════════════════════════════════════════ */
+.header{
+  position:sticky; top:0; z-index:60;
+  border-bottom:1px solid var(--line);
+  background:linear-gradient(180deg, rgba(11,18,32,0.94), rgba(11,18,32,0.70));
+  -webkit-backdrop-filter:blur(14px);
+  backdrop-filter:blur(14px);
+}
+.header-inner{
+  max-width:1400px;
+  margin:0 auto;
+  padding:12px var(--s-4);
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:var(--s-3);
+  flex-wrap:wrap;
+}
+
+.brand{ display:flex; align-items:center; gap:13px; }
+.logo{
+  width:44px; height:44px; flex:none;
+  border-radius:13px;
+  display:grid; place-items:center;
+  background:linear-gradient(140deg, var(--solar), var(--solar-2) 52%, var(--piezo));
+  box-shadow:0 6px 18px rgba(255,176,46,0.22), inset 0 1px 0 rgba(255,255,255,0.35);
+  color:#0b1220;
+}
+.brand-text h1{
+  font-size:1.06rem;
+  font-weight:800;
+  letter-spacing:.16em;
+  line-height:1.1;
+}
+.brand-text p{
+  font-size:.7rem;
+  color:var(--text-3);
+  letter-spacing:.05em;
+  margin-top:3px;
+}
+
+.header-right{
+  display:flex;
+  align-items:center;
+  gap:var(--s-2);
+  flex-wrap:wrap;
+}
+
+.chip{
+  display:flex;
+  align-items:center;
+  gap:8px;
+  padding:7px 13px;
+  border-radius:var(--r-pill);
+  border:1px solid var(--line);
+  background:var(--panel-2);
+  white-space:nowrap;
+}
+.chip-k{
+  font-size:.6rem;
+  letter-spacing:.14em;
+  text-transform:uppercase;
+  color:var(--text-3);
+}
+.chip-v{
+  font-family:var(--mono);
+  font-size:.78rem;
+  font-weight:600;
+  color:var(--text);
+  font-variant-numeric:tabular-nums;
+}
+
+.status-pill{
+  display:inline-flex;
+  align-items:center;
+  gap:9px;
+  padding:8px 15px;
+  border-radius:var(--r-pill);
+  font-size:.7rem;
+  font-weight:700;
+  letter-spacing:.13em;
+  white-space:nowrap;
+  transition:all .35s var(--ease);
+}
+.status-pill .dot{
+  width:8px; height:8px; border-radius:50%;
+  background:currentColor;
+  flex:none;
+}
+.status-pill.online{
+  color:var(--ok);
+  background:var(--ok-soft);
+  border:1px solid rgba(55,217,141,0.32);
+}
+.status-pill.online .dot{ animation:dotPulse 2s infinite; }
+.status-pill.offline{
+  color:var(--warn);
+  background:var(--warn-soft);
+  border:1px solid rgba(255,122,107,0.32);
+}
+@keyframes dotPulse{
+  0%  { box-shadow:0 0 0 0 currentColor; opacity:1; }
+  70% { box-shadow:0 0 0 7px transparent; opacity:.85; }
+  100%{ box-shadow:0 0 0 0 transparent; opacity:1; }
+}
+
+/* ══════════════════════════════════════════════════════════════
+   LAYOUT  (default = scrollable / mobile-first)
+   ══════════════════════════════════════════════════════════════ */
+.wrap{
+  max-width:1240px;
+  margin:0 auto;
+  padding:var(--s-5) var(--s-4) var(--s-4);
+  display:flex;
+  flex-direction:column;
+  gap:var(--s-4);
+}
+.grid-2{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:var(--s-4);
+}
+
+.card{
+  position:relative;
+  background:var(--panel);
+  border:1px solid var(--line);
+  border-radius:var(--r-lg);
+  padding:var(--s-4);
+  box-shadow:var(--shadow-1);
+  -webkit-backdrop-filter:blur(10px);
+  backdrop-filter:blur(10px);
+  overflow:hidden;
+}
+.card::before{
+  content:"";
+  position:absolute; top:0; left:0; right:0; height:1px;
+  background:linear-gradient(90deg, transparent, rgba(255,255,255,0.16), transparent);
+}
+
+.card-body{ display:block; }
+
+.sec-head{
+  display:flex;
+  align-items:flex-end;
+  justify-content:space-between;
+  gap:12px;
+  flex-wrap:wrap;
+  margin-bottom:var(--s-3);
+}
+.sec-head h2{
+  font-size:1.02rem;
+  font-weight:700;
+  letter-spacing:.015em;
+}
+.sec-head p{
+  font-size:.74rem;
+  color:var(--text-3);
+  margin-top:3px;
+  letter-spacing:.03em;
+}
+
+/* ══════════════════════════════════════════════════════════════
+   3. BUS TRACKING — card-row list (table markup preserved)
+   ══════════════════════════════════════════════════════════════ */
+.bus-table{
+  display:block;
+  width:100%;
+  border-collapse:collapse;
+}
+.bus-table thead{ display:none; }
+.bus-table tbody{ display:block; width:100%; }
+
+.bus-table tr{
+  display:grid;
+  grid-template-columns:1fr auto;
+  grid-template-areas:
+    "id      status"
+    "route   route"
+    "time    act";
+  gap:6px 10px;
+  padding:11px 13px;
+  border-radius:var(--r-md);
+  border:1px solid var(--line);
+  background:rgba(255,255,255,0.024);
+  margin-bottom:8px;
+  cursor:pointer;
+  outline:none;
+  transition:background .2s var(--ease), border-color .2s var(--ease),
+             transform .2s var(--ease);
+}
+.bus-table tr:last-child{ margin-bottom:0; }
+.bus-table tr:hover,
+.bus-table tr:focus-visible{
+  background:var(--accent-soft);
+  border-color:rgba(111,157,255,0.38);
+  transform:translateX(2px);
+}
+.bus-table tr:focus-visible{ box-shadow:0 0 0 2px rgba(111,157,255,0.4); }
+
+.bus-table td{
+  display:block;
+  padding:0;
+  border:none;
+  min-width:0;
+}
+.c-id{ grid-area:id; }
+.c-status{ grid-area:status; align-self:start; }
+.c-route{
+  grid-area:route;
+  font-size:.72rem;
+  color:var(--text-3);
+  letter-spacing:.02em;
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
+.c-time{
+  grid-area:time;
+  display:flex;
+  align-items:baseline;
+  gap:8px;
+  min-width:0;
+}
+.c-act{
+  grid-area:act;
+  align-self:end;
+  color:var(--text-3);
+  transition:color .2s var(--ease), transform .2s var(--ease);
+}
+.bus-table tr:hover .c-act{
+  color:var(--accent);
+  transform:translateX(3px);
+}
+
+.bus-id{ display:flex; align-items:center; gap:10px; min-width:0; }
+.bus-id-text{ min-width:0; }
+.bus-dot{
+  width:8px; height:8px; border-radius:50%;
+  background:var(--text-3); flex:none;
+  transition:background .3s var(--ease);
+}
+.bus-dot.on{
+  background:var(--ok);
+  animation:dotPulse 2s infinite;
+}
+.bus-name{
+  font-weight:600;
+  font-size:.86rem;
+  line-height:1.25;
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
+.bus-code{
+  font-family:var(--mono);
+  font-size:.64rem;
+  color:var(--text-3);
+  letter-spacing:.06em;
+  margin-top:1px;
+}
+
+.bus-status{
+  display:inline-flex;
+  align-items:center;
+  padding:4px 10px;
+  border-radius:var(--r-pill);
+  font-size:.64rem;
+  font-weight:700;
+  letter-spacing:.04em;
+  white-space:nowrap;
+  transition:all .35s var(--ease);
+}
+.bus-status.at{
+  color:var(--ok);
+  background:var(--ok-soft);
+  border:1px solid rgba(55,217,141,0.34);
+  box-shadow:0 0 18px rgba(55,217,141,0.16);
+}
+.bus-status.off{
+  color:var(--text-3);
+  background:rgba(255,255,255,0.028);
+  border:1px solid var(--line);
+}
+
+.det-time{
+  font-family:var(--mono);
+  font-size:.74rem;
+  font-variant-numeric:tabular-nums;
+}
+.det-age{
+  font-size:.64rem;
+  color:var(--text-3);
+  white-space:nowrap;
+}
+
+/* ══════════════════════════════════════════════════════════════
+   4a. LIVE RFID READER
+   ══════════════════════════════════════════════════════════════ */
+.rfid-box{
+  position:relative;
+  min-height:210px;
+  height:100%;
+  padding:var(--s-4);
+  border-radius:var(--r-md);
+  border:1.5px dashed var(--line-2);
+  background:rgba(255,255,255,0.014);
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  overflow:hidden;
+  transition:border-color .4s var(--ease), box-shadow .4s var(--ease),
+             background .4s var(--ease);
+}
+.rfid-box.active{
+  border-style:solid;
+  border-color:rgba(47,227,196,0.55);
+  background:rgba(47,227,196,0.045);
+  box-shadow:0 0 0 1px rgba(47,227,196,0.18),
+             0 0 44px rgba(47,227,196,0.12) inset;
+}
+.rfid-box.unknown{
+  border-color:rgba(255,122,107,0.55);
+  background:rgba(255,122,107,0.05);
+  box-shadow:0 0 0 1px rgba(255,122,107,0.18),
+             0 0 44px rgba(255,122,107,0.12) inset;
+}
+
+.scan-line{
+  position:absolute;
+  left:7%; right:7%;
+  height:2px;
+  border-radius:2px;
+  background:linear-gradient(90deg, transparent, var(--piezo), transparent);
+  box-shadow:0 0 16px 2px rgba(47,227,196,0.55);
+  opacity:0;
+  pointer-events:none;
+}
+.rfid-box.active .scan-line{
+  opacity:1;
+  animation:scanSweep 2.3s ease-in-out infinite;
+}
+.rfid-box.unknown .scan-line{
+  background:linear-gradient(90deg, transparent, var(--warn), transparent);
+  box-shadow:0 0 16px 2px rgba(255,122,107,0.55);
+}
+@keyframes scanSweep{
+  0%  { top:8%;  opacity:0; }
+  14% {         opacity:1; }
+  50% { top:92%; opacity:1; }
+  86% {         opacity:1; }
+  100%{ top:8%;  opacity:0; }
+}
+
+.rfid-waiting{
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  gap:9px;
+  text-align:center;
+  color:var(--text-3);
+}
+.rfid-waiting svg{ opacity:.55; }
+.rfid-waiting p{
+  font-size:.86rem;
+  font-weight:600;
+  color:var(--text-2);
+  letter-spacing:.04em;
+}
+.rfid-waiting span{
+  font-size:.72rem;
+  max-width:230px;
+}
+
+.rfid-data{ width:100%; position:relative; z-index:2; }
+
+.rfid-top{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:10px;
+  flex-wrap:wrap;
+  margin-bottom:var(--s-3);
+}
+.rfid-tag-badge{
+  display:inline-flex;
+  align-items:center;
+  gap:7px;
+  padding:5px 12px;
+  border-radius:var(--r-pill);
+  font-size:.66rem;
+  font-weight:800;
+  letter-spacing:.13em;
+  text-transform:uppercase;
+}
+.rfid-tag-badge.good{
+  color:var(--ok);
+  background:var(--ok-soft);
+  border:1px solid rgba(55,217,141,0.35);
+}
+.rfid-tag-badge.bad{
+  color:var(--warn);
+  background:var(--warn-soft);
+  border:1px solid rgba(255,122,107,0.35);
+}
+.rfid-time{
+  font-family:var(--mono);
+  font-size:.76rem;
+  color:var(--text-3);
+  font-variant-numeric:tabular-nums;
+}
+
+.rfid-grid{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:var(--s-2);
+}
+.rfid-field{
+  background:rgba(255,255,255,0.032);
+  border:1px solid var(--line);
+  border-radius:var(--r-sm);
+  padding:10px 12px;
+  min-width:0;
+}
+.rfid-field.wide{ grid-column:1 / -1; }
+.rfid-field label{
+  display:block;
+  font-size:.6rem;
+  letter-spacing:.13em;
+  text-transform:uppercase;
+  color:var(--text-3);
+  margin-bottom:5px;
+}
+.rfid-field strong{
+  display:block;
+  font-size:.84rem;
+  font-weight:600;
+  word-break:break-word;
+}
+.rfid-field strong.mono{
+  font-family:var(--mono);
+  letter-spacing:.09em;
+  color:var(--piezo);
+}
+.rfid-box.unknown .rfid-field strong.mono{ color:var(--warn); }
+
+/* ══════════════════════════════════════════════════════════════
+   4b. ENERGY GENERATION
+   ══════════════════════════════════════════════════════════════ */
+.source-grid{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:var(--s-2);
+}
+.source{
+  display:flex;
+  align-items:center;
+  gap:12px;
+  padding:12px;
+  border-radius:var(--r-md);
+  border:1px solid var(--line);
+  background:var(--panel-2);
+  transition:border-color .3s var(--ease), transform .3s var(--ease);
+}
+.source:hover{ transform:translateY(-2px); }
+.source.solar:hover{ border-color:rgba(255,176,46,0.4); }
+.source.piezo:hover{ border-color:rgba(47,227,196,0.4); }
+
+.source .icon{
+  width:40px; height:40px; flex:none;
+  border-radius:12px;
+  display:grid; place-items:center;
+}
+.source.solar .icon{ background:var(--solar-soft); color:var(--solar); }
+.source.piezo .icon{ background:var(--piezo-soft); color:var(--piezo); }
+
+.source-meta{ min-width:0; }
+.source-meta span{
+  display:block;
+  font-size:.58rem;
+  letter-spacing:.14em;
+  text-transform:uppercase;
+  color:var(--text-3);
+  margin-bottom:4px;
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
+.source-meta strong{
+  font-family:var(--mono);
+  font-size:1.12rem;
+  font-weight:700;
+  font-variant-numeric:tabular-nums;
+}
+
+.mix{ margin-top:var(--s-3); }
+.mix-head{
+  display:flex;
+  align-items:baseline;
+  justify-content:space-between;
+  gap:10px;
+  margin-bottom:8px;
+}
+.mix-head span{
+  font-size:.62rem;
+  letter-spacing:.13em;
+  text-transform:uppercase;
+  color:var(--text-3);
+}
+.mix-head strong{
+  font-family:var(--mono);
+  font-size:1rem;
+  font-variant-numeric:tabular-nums;
+}
+.mix-bar{
+  display:flex;
+  height:13px;
+  border-radius:var(--r-pill);
+  overflow:hidden;
+  background:rgba(255,255,255,0.05);
+  border:1px solid var(--line);
+}
+.mix-solar{
+  background:linear-gradient(90deg, var(--solar-2), var(--solar));
+  transition:width .7s var(--ease);
+}
+.mix-piezo{
+  background:linear-gradient(90deg, var(--piezo), var(--piezo-2));
+  transition:width .7s var(--ease);
+}
+.mix-legend{
+  display:flex;
+  gap:16px;
+  margin-top:9px;
+  font-size:.66rem;
+  color:var(--text-3);
+}
+.mix-legend i{
+  display:inline-block;
+  width:8px; height:8px; border-radius:3px;
+  margin-right:6px;
+  vertical-align:middle;
+}
+.leg-solar i{ background:var(--solar); }
+.leg-piezo i{ background:var(--piezo); }
+
+.tiles{
+  display:grid;
+  grid-template-columns:repeat(3, 1fr);
+  gap:var(--s-2);
+  margin-top:var(--s-3);
+}
+.tile{
+  background:var(--panel-2);
+  border:1px solid var(--line);
+  border-radius:var(--r-md);
+  padding:11px 12px;
+  min-width:0;
+}
+.tile span{
+  display:block;
+  font-size:.57rem;
+  letter-spacing:.13em;
+  text-transform:uppercase;
+  color:var(--text-3);
+  margin-bottom:5px;
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
+.tile strong{
+  font-family:var(--mono);
+  font-size:.98rem;
+  font-weight:700;
+  font-variant-numeric:tabular-nums;
+}
+
+.disclaimer{
+  margin-top:var(--s-3);
+  font-size:.64rem;
+  line-height:1.5;
+  color:var(--text-3);
+  border-left:2px solid var(--line-2);
+  padding-left:10px;
+}
+
+/* ══════════════════════════════════════════════════════════════
+   5. FOOTER
+   ══════════════════════════════════════════════════════════════ */
+.footer{
+  max-width:1240px;
+  margin:0 auto;
+  padding:0 var(--s-4) var(--s-5);
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+  flex-wrap:wrap;
+  font-size:.68rem;
+  letter-spacing:.11em;
+  text-transform:uppercase;
+  color:var(--text-3);
+}
+.footer b{ color:var(--text-2); font-weight:700; }
+
+/* ══════════════════════════════════════════════════════════════
+   6. ROUTE TRACKER MODAL
+   ══════════════════════════════════════════════════════════════ */
+.modal{
+  position:fixed; inset:0; z-index:200;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  padding:20px;
+  background:rgba(4,8,16,0.74);
+  -webkit-backdrop-filter:blur(9px);
+  backdrop-filter:blur(9px);
+  opacity:0;
+  visibility:hidden;
+  transition:opacity .28s var(--ease), visibility .28s var(--ease);
+}
+.modal.open{ opacity:1; visibility:visible; }
+
+.modal-card{
+  width:min(580px, 100%);
+  max-height:88vh;
+  overflow-y:auto;
+  padding:var(--s-4);
+  border-radius:var(--r-lg);
+  border:1px solid var(--line-2);
+  background:linear-gradient(180deg, #16223b 0%, #0e1729 100%);
+  box-shadow:var(--shadow-2);
+  transform:translateY(20px) scale(.955);
+  opacity:0;
+  transition:transform .34s var(--ease), opacity .34s var(--ease);
+}
+.modal.open .modal-card{ transform:translateY(0) scale(1); opacity:1; }
+
+.modal-head{
+  display:flex;
+  align-items:flex-start;
+  justify-content:space-between;
+  gap:14px;
+}
+.modal-head h3{
+  font-size:1.12rem;
+  font-weight:700;
+  letter-spacing:.01em;
+}
+.modal-code{
+  display:inline-block;
+  margin-top:6px;
+  font-family:var(--mono);
+  font-size:.7rem;
+  letter-spacing:.12em;
+  color:var(--solar);
+  background:var(--solar-soft);
+  border:1px solid rgba(255,176,46,0.28);
+  border-radius:var(--r-pill);
+  padding:3px 11px;
+}
+.modal-close{
+  width:34px; height:34px; flex:none;
+  border-radius:10px;
+  border:1px solid var(--line);
+  background:rgba(255,255,255,0.04);
+  color:var(--text-2);
+  font-size:1.15rem;
+  line-height:1;
+  cursor:pointer;
+  display:grid; place-items:center;
+  transition:all .2s var(--ease);
+}
+.modal-close:hover{
+  background:var(--warn-soft);
+  border-color:rgba(255,122,107,0.4);
+  color:var(--warn);
+  transform:rotate(90deg);
+}
+
+.modal-info{
+  display:grid;
+  grid-template-columns:repeat(3, 1fr);
+  gap:var(--s-2);
+  margin-top:var(--s-3);
+}
+.modal-info > div{
+  background:var(--panel-2);
+  border:1px solid var(--line);
+  border-radius:var(--r-md);
+  padding:11px 13px;
+  min-width:0;
+}
+.modal-info span{
+  display:block;
+  font-size:.58rem;
+  letter-spacing:.13em;
+  text-transform:uppercase;
+  color:var(--text-3);
+  margin-bottom:5px;
+}
+.modal-info strong{
+  display:block;
+  font-size:.85rem;
+  font-weight:600;
+  word-break:break-word;
+}
+.modal-info strong.ok{ color:var(--ok); }
+.modal-info strong.dim{ color:var(--text-3); }
+
+.timeline{
+  position:relative;
+  margin-top:var(--s-4);
+}
+.tl-rail,
+.tl-progress{
+  position:absolute;
+  left:10px;
+  width:2px;
+  border-radius:2px;
+}
+.tl-rail{ background:var(--line-2); }
+.tl-progress{
+  background:linear-gradient(180deg, var(--piezo), var(--accent));
+  box-shadow:0 0 14px rgba(111,157,255,0.45);
+  transition:height .45s var(--ease), top .3s var(--ease);
+}
+
+.tl-stops{
+  display:flex;
+  flex-direction:column;
+  gap:20px;
+}
+
+.stop{
+  position:relative;
+  padding-left:38px;
+}
+.stop-node{
+  position:absolute;
+  left:0; top:2px;
+  width:22px; height:22px;
+  border-radius:50%;
+  border:2px solid var(--line-2);
+  background:#0e1729;
+  display:grid;
+  place-items:center;
+  z-index:2;
+}
+.stop-node::after{
+  content:"";
+  width:7px; height:7px;
+  border-radius:50%;
+  background:var(--text-3);
+  transition:background .3s var(--ease);
+}
+.stop.passed .stop-node{ border-color:var(--accent); }
+.stop.passed .stop-node::after{ background:var(--accent); }
+.stop.current .stop-node{
+  border-color:var(--ok);
+  animation:nodePulse 2.1s infinite;
+}
+.stop.current .stop-node::after{ background:var(--ok); }
+@keyframes nodePulse{
+  0%  { box-shadow:0 0 0 0 rgba(55,217,141,0.5); }
+  70% { box-shadow:0 0 0 12px rgba(55,217,141,0); }
+  100%{ box-shadow:0 0 0 0 rgba(55,217,141,0); }
+}
+.stop.future{ opacity:.62; }
+
+.stop-name{
+  font-size:.9rem;
+  font-weight:600;
+  line-height:1.3;
+}
+.stop-meta{
+  display:flex;
+  gap:12px;
+  flex-wrap:wrap;
+  font-size:.71rem;
+  color:var(--text-3);
+  margin-top:4px;
+}
+.stop-tag{
+  display:inline-block;
+  margin-top:8px;
+  padding:3px 10px;
+  border-radius:var(--r-pill);
+  font-size:.6rem;
+  font-weight:700;
+  letter-spacing:.11em;
+  text-transform:uppercase;
+}
+.stop.passed .stop-tag{
+  color:var(--text-3);
+  background:rgba(255,255,255,0.045);
+  border:1px solid var(--line);
+}
+.stop.current .stop-tag{
+  color:var(--ok);
+  background:var(--ok-soft);
+  border:1px solid rgba(55,217,141,0.34);
+}
+.stop.future .stop-tag{
+  color:var(--text-3);
+  background:rgba(255,255,255,0.03);
+  border:1px solid var(--line);
+}
+
+/* ══════════════════════════════════════════════════════════════
+   HERO LAYOUT  —  all 3 cards fit in one viewport, no page scroll
+   ══════════════════════════════════════════════════════════════ */
+@media (min-width: 1024px) and (min-height: 620px) {
+  body{
+    height:100vh;
+    height:100dvh;
+    overflow:hidden;
+  }
+  #appContent{
+    height:100vh;
+    height:100dvh;
+    display:flex;
+    flex-direction:column;
+    overflow:hidden;
+  }
+  .header{ flex:0 0 auto; }
+  .header-inner{ padding:11px var(--s-4); }
+
+  .wrap{
+    flex:1 1 auto;
+    min-height:0;
+    display:grid;
+    grid-template-columns:1fr 2fr;
+    gap:14px;
+    max-width:1400px;
+    width:100%;
+    margin:0 auto;
+    padding:14px 20px 0;
+    overflow:hidden;
+  }
+  .grid-2{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:14px;
+    min-height:0;
+    min-width:0;
+  }
+
+  .card{
+    display:flex;
+    flex-direction:column;
+    min-height:0;
+    min-width:0;
+    overflow:hidden;
+    padding:16px;
+    border-radius:16px;
+    box-shadow:0 6px 20px rgba(0,0,0,0.32);
+  }
+  .card > .sec-head{
+    flex:0 0 auto;
+    margin-bottom:11px;
+  }
+  .card-body{
+    flex:1 1 auto;
+    min-height:0;
+    overflow-y:auto;
+    overflow-x:hidden;
+    scrollbar-width:thin;
+    scrollbar-color:var(--line-2) transparent;
+  }
+  .card-body::-webkit-scrollbar{ width:6px; }
+  .card-body::-webkit-scrollbar-track{ background:transparent; }
+  .card-body::-webkit-scrollbar-thumb{
+    background:var(--line-2);
+    border-radius:3px;
+  }
+
+  .rfid-card .card-body{
+    display:flex;
+    flex-direction:column;
+  }
+  .rfid-box{
+    flex:1 1 auto;
+    min-height:180px;
+  }
+
+  .footer{
+    flex:0 0 auto;
+    max-width:1400px;
+    width:100%;
+    padding:10px 20px 14px;
+  }
+
+  /* Slightly tighter bus rows in hero so 4 fit comfortably */
+  .bus-table tr{ padding:10px 12px; margin-bottom:7px; }
+}
+
+/* ══════════════════════════════════════════════════════════════
+   RESPONSIVE FALLBACKS
+   ══════════════════════════════════════════════════════════════ */
+@media (max-width: 980px){
+  .grid-2{ grid-template-columns:1fr; }
+}
+@media (max-width: 720px){
+  body{ font-size:14px; }
+  .wrap{ padding:var(--s-4) var(--s-3) var(--s-3); gap:var(--s-3); }
+  .card{ padding:var(--s-3); border-radius:var(--r-md); }
+  .header-inner{ padding:12px var(--s-3); }
+  .brand-text p{ display:none; }
+  .logo{ width:38px; height:38px; border-radius:11px; }
+  .footer{ padding:0 var(--s-3) var(--s-4); font-size:.6rem; }
+  .rfid-grid{ grid-template-columns:1fr; }
+  .tiles{ grid-template-columns:1fr; }
+  .modal-info{ grid-template-columns:1fr; }
+  .modal-card{ padding:var(--s-3); }
+  .mix-legend{ font-size:.64rem; }
+}
+@media (max-width: 420px){
+  .source-grid{ grid-template-columns:1fr; }
+  .chip-k{ display:none; }
+  .header-right{ gap:7px; }
+}
+</style>
+</head>
+<body>
+
+<!-- ═══════════════ 1. PRELOADER ═══════════════ -->
+<div id="preloader">
+  <div class="pre-brand">SUNSTRIDE</div>
+
+  <div class="pre-track">
+    <div class="pre-rail"></div>
+    <svg class="pre-bus" width="34" height="20" viewBox="0 0 34 20" aria-hidden="true">
+      <defs>
+        <linearGradient id="busGrad" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0" stop-color="#ffb02e"/>
+          <stop offset="1" stop-color="#ff8a3d"/>
+        </linearGradient>
+      </defs>
+      <rect x="1" y="2" width="32" height="13" rx="3.6" fill="url(#busGrad)"/>
+      <rect x="4" y="5" width="7" height="5" rx="1.3" fill="#0b1220" opacity=".55"/>
+      <rect x="13.5" y="5" width="7" height="5" rx="1.3" fill="#0b1220" opacity=".55"/>
+      <rect x="23" y="5" width="7" height="5" rx="1.3" fill="#0b1220" opacity=".55"/>
+      <circle cx="9" cy="16.5" r="2.6" fill="#0b1220" stroke="#8aa8dc" stroke-width="1"/>
+      <circle cx="25" cy="16.5" r="2.6" fill="#0b1220" stroke="#8aa8dc" stroke-width="1"/>
+    </svg>
+  </div>
+
+  <div class="pre-caption">Connecting to Station Node…</div>
+</div>
+
+<!-- ═══════════════ APP ═══════════════ -->
+<div id="appContent">
+
+  <!-- ── 2. HEADER BAR ── -->
+  <header class="header">
+    <div class="header-inner">
+      <div class="brand">
+        <div class="logo">
+          <svg viewBox="0 0 32 32" width="24" height="24" aria-hidden="true">
+            <circle cx="16" cy="16" r="5.4" fill="#0b1220"/>
+            <g stroke="#0b1220" stroke-width="2.1" stroke-linecap="round">
+              <line x1="16" y1="3"    x2="16" y2="7.4"/>
+              <line x1="16" y1="24.6" x2="16" y2="29"/>
+              <line x1="3"  y1="16"   x2="7.4" y2="16"/>
+              <line x1="24.6" y1="16" x2="29"  y2="16"/>
+              <line x1="6.9" y1="6.9" x2="10"  y2="10"/>
+              <line x1="22"  y1="22"  x2="25.1" y2="25.1"/>
+              <line x1="25.1" y1="6.9" x2="22" y2="10"/>
+              <line x1="10"  y1="22"  x2="6.9" y2="25.1"/>
+            </g>
+          </svg>
+        </div>
+        <div class="brand-text">
+          <h1>SUNSTRIDE</h1>
+          <p>Smart Sustainable Transit Station</p>
+        </div>
+      </div>
+
+      <div class="header-right">
+        <div class="chip">
+          <span class="chip-k">Node</span>
+          <span class="chip-v" id="stationId">ESP8266-ATL-01</span>
+        </div>
+        <div class="chip">
+          <span class="chip-k">Local</span>
+          <span class="chip-v" id="clock">--:--:--</span>
+        </div>
+        <div class="status-pill online" id="stationBadge">
+          <span class="dot"></span>
+          <span id="stationBadgeText">STATION ONLINE</span>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <main class="wrap">
+
+    <!-- ── 3. BUS TRACKING ── -->
+    <section class="card bus-card">
+      <div class="sec-head">
+        <div>
+          <h2>Bus Tracking</h2>
+          <p>RFID detection at this station</p>
+        </div>
+      </div>
+
+      <div class="card-body">
+        <table class="bus-table">
+          <thead>
+            <tr>
+              <th>Transit Name / ID</th>
+              <th>Route</th>
+              <th>Current Status</th>
+              <th>Last Detected</th>
+              <th style="text-align:right">Action</th>
+            </tr>
+          </thead>
+          <tbody id="busTableBody"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ── 4. RFID + ENERGY ── -->
+    <div class="grid-2">
+
+      <!-- 4a. LIVE RFID READER -->
+      <section class="card rfid-card">
+        <div class="sec-head">
+          <div>
+            <h2>Live RFID Reader</h2>
+            <p>MFRC522 Sensor</p>
+          </div>
+        </div>
+
+        <div class="card-body">
+          <div class="rfid-box" id="rfidBox">
+            <div class="scan-line"></div>
+
+            <div class="rfid-waiting" id="rfidWaitingText">
+              <svg viewBox="0 0 24 24" width="36" height="36" fill="none"
+                   stroke="currentColor" stroke-width="1.6"
+                   stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <rect x="13.5" y="6.5" width="8" height="11" rx="2.2"/>
+                <line x1="17.5" y1="10" x2="17.5" y2="14"/>
+                <path d="M9.6 5.4a13 13 0 0 1 0 13.2"/>
+                <path d="M6.2 8a8.5 8.5 0 0 1 0 8"/>
+                <circle cx="3" cy="12" r="1.5" fill="currentColor" stroke="none"/>
+              </svg>
+              <p>Awaiting tag…</p>
+              <span>Place a bus tag near the MFRC522 reader to register an arrival.</span>
+            </div>
+
+            <div class="rfid-data" id="rfidEventData" hidden>
+              <div class="rfid-top">
+                <span class="rfid-tag-badge good" id="rfidStateTag">BUS DETECTED</span>
+                <span class="rfid-time" id="rfidTimestamp">--:--:--</span>
+              </div>
+              <div class="rfid-grid">
+                <div class="rfid-field">
+                  <label>Bus Identifier</label>
+                  <strong id="rfidBusId">—</strong>
+                </div>
+                <div class="rfid-field">
+                  <label>Assigned Route</label>
+                  <strong id="rfidRoute">—</strong>
+                </div>
+                <div class="rfid-field wide">
+                  <label>Scanned RFID Tag UID</label>
+                  <strong class="mono" id="rfidTag">—</strong>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- 4b. ENERGY GENERATION -->
+      <section class="card energy-card">
+        <div class="sec-head">
+          <div>
+            <h2>Energy Generation</h2>
+            <p>Hybrid Harvesting</p>
+          </div>
+        </div>
+
+        <div class="card-body">
+          <div class="source-grid">
+            <div class="source solar">
+              <div class="icon">
+                <svg viewBox="0 0 24 24" width="21" height="21" fill="none"
+                     stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
+                  <circle cx="12" cy="12" r="4"/>
+                  <path d="M12 2.2v2.4M12 19.4v2.4M2.2 12h2.4M19.4 12h2.4
+                           M5.1 5.1l1.7 1.7M17.2 17.2l1.7 1.7
+                           M18.9 5.1l-1.7 1.7M6.8 17.2l-1.7 1.7"/>
+                </svg>
+              </div>
+              <div class="source-meta">
+                <span>Solar Array</span>
+                <strong id="valSolar">12.4 W</strong>
+              </div>
+            </div>
+
+            <div class="source piezo">
+              <div class="icon">
+                <svg viewBox="0 0 24 24" width="21" height="21" fill="none"
+                     stroke="currentColor" stroke-width="1.8"
+                     stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M2 12h3.2l2.1-6.2 3.1 12.4 2.7-9.1 2 2.9H22"/>
+                </svg>
+              </div>
+              <div class="source-meta">
+                <span>Piezoelectric</span>
+                <strong id="valPiezo">3.8 W</strong>
+              </div>
+            </div>
+          </div>
+
+          <div class="mix">
+            <div class="mix-head">
+              <span>Total Generation Power</span>
+              <strong id="valTotal">16.2 W</strong>
+            </div>
+            <div class="mix-bar">
+              <div class="mix-solar" id="barSolar" style="width:76%"></div>
+              <div class="mix-piezo" id="barPiezo" style="width:24%"></div>
+            </div>
+            <div class="mix-legend">
+              <span class="leg-solar"><i></i>Solar Array</span>
+              <span class="leg-piezo"><i></i>Piezoelectric</span>
+            </div>
+          </div>
+
+          <div class="tiles">
+            <div class="tile">
+              <span>Storage Level</span>
+              <strong id="valBattery">78%</strong>
+            </div>
+            <div class="tile">
+              <span>System Voltage</span>
+              <strong id="valVoltage">5.1 V</strong>
+            </div>
+            <div class="tile">
+              <span>Today Total</span>
+              <strong id="valTodayEnergy">0.42 kWh</strong>
+            </div>
+          </div>
+
+          <p class="disclaimer">
+            Conceptual / simulated energy data — no solar or piezo hardware is connected.
+          </p>
+        </div>
+      </section>
+    </div>
+  </main>
+
+  <!-- ── 5. FOOTER ── -->
+  <footer class="footer">
+    <span>SunStride Smart Station • Local Interface</span>
+    <span>Node: <b id="footerStationId">ESP8266-ATL-01</b></span>
+  </footer>
+</div>
+
+<!-- ═══════════════ 6. ROUTE TRACKER MODAL ═══════════════ -->
+<div class="modal" id="trackerModal" role="dialog" aria-modal="true" aria-labelledby="modalBusName">
+  <div class="modal-card">
+    <div class="modal-head">
+      <div>
+        <h3 id="modalBusName">—</h3>
+        <span class="modal-code" id="modalBusCode">—</span>
+      </div>
+      <button class="modal-close" id="modalCloseBtn" aria-label="Close">✕</button>
+    </div>
+
+    <div class="modal-info">
+      <div>
+        <span>Active Route</span>
+        <strong id="modalRouteName">—</strong>
+      </div>
+      <div>
+        <span>Live Status</span>
+        <strong id="modalLiveStatus">—</strong>
+      </div>
+      <div>
+        <span>Last Detected</span>
+        <strong id="modalLastSeen">—</strong>
+      </div>
+    </div>
+
+    <div class="timeline">
+      <div class="tl-rail"></div>
+      <div class="tl-progress" id="modalTimelineProgress"></div>
+      <div class="tl-stops" id="modalStationsList"></div>
+    </div>
+
+    <p class="disclaimer">
+      Route stop list is interface data only — no GPS in this prototype.
+    </p>
+  </div>
+</div>
+
+<script>
+(function () {
+  'use strict';
+
+  /* ══════════════════════════════════════════════════════════
+     DOM REFERENCES  (IDs are fixed — a firmware port hooks here)
+     ══════════════════════════════════════════════════════════ */
+  var $ = function (id) { return document.getElementById(id); };
+
+  var elPreloader      = $('preloader');
+  var elAppContent     = $('appContent');
+  var elClock          = $('clock');
+  var elStationId      = $('stationId');
+  var elFooterStation  = $('footerStationId');
+  var elStationBadge   = $('stationBadge');
+  var elStationBadgeTx = $('stationBadgeText');
+  var elBusTableBody   = $('busTableBody');
+
+  var elRfidBox        = $('rfidBox');
+  var elRfidWaiting    = $('rfidWaitingText');
+  var elRfidEventData  = $('rfidEventData');
+  var elRfidStateTag   = $('rfidStateTag');
+  var elRfidTimestamp  = $('rfidTimestamp');
+  var elRfidBusId      = $('rfidBusId');
+  var elRfidRoute      = $('rfidRoute');
+  var elRfidTag        = $('rfidTag');
+
+  var elValSolar       = $('valSolar');
+  var elValPiezo       = $('valPiezo');
+  var elValTotal       = $('valTotal');
+  var elBarSolar       = $('barSolar');
+  var elBarPiezo       = $('barPiezo');
+  var elValBattery     = $('valBattery');
+  var elValVoltage     = $('valVoltage');
+  var elValTodayEnergy = $('valTodayEnergy');
+
+  var elModal          = $('trackerModal');
+  var elModalClose     = $('modalCloseBtn');
+  var elModalBusName   = $('modalBusName');
+  var elModalBusCode   = $('modalBusCode');
+  var elModalRouteName = $('modalRouteName');
+  var elModalLiveStat  = $('modalLiveStatus');
+  var elModalLastSeen  = $('modalLastSeen');
+  var elModalStations  = $('modalStationsList');
+  var elModalProgress  = $('modalTimelineProgress');
+  var elTlRail         = document.querySelector('.tl-rail');
+
+  /* ══════════════════════════════════════════════════════════
+     STATIC DEMO DATA — route stop lists (interface only)
+     ══════════════════════════════════════════════════════════ */
+  var ROUTE_STOPS = {
+    'SX-01': ['Tech Park Central', 'SunStride Smart Station', 'Metro Terminal North', 'Green Valley Hub'],
+    'EP-02': ['East Side Depot',   'SunStride Smart Station', 'Central City Square',  'Solaris Suburb'],
+    'VR-03': ['West Ring Plaza',   'SunStride Smart Station', 'North Gateway'],
+    'AG-04': ['Airport Terminal 1','SunStride Smart Station', 'Financial District']
+  };
+
+  /* ══════════════════════════════════════════════════════════
+     SINGLE SOURCE OF TRUTH
+     Replace the simulation with fetch("/api/status") + applyStatus()
+     and fetch("/api/rfid") + applyRfid() later.
+     ══════════════════════════════════════════════════════════ */
+  var stationState = {
+    stationId: 'ESP8266-ATL-01',
+    online: true,
+    buses: [
+      { id: 1, name: 'Solaris Express',   code: 'SX-01', route: 'Route A • Express',
+        status: 'At Station',   rfidTag: 'A3 F2 19 7C', lastDetected: '--:--:--', ageSec: 0 },
+      { id: 2, name: 'EcoPulse Liner',    code: 'EP-02', route: 'Route B • Metro Feed',
+        status: 'Not Detected', rfidTag: '',             lastDetected: '--:--:--', ageSec: null },
+      { id: 3, name: 'VoltRunner',        code: 'VR-03', route: 'Route C • City Loop',
+        status: 'Not Detected', rfidTag: '',             lastDetected: '--:--:--', ageSec: null },
+      { id: 4, name: 'AeroGlide Transit', code: 'AG-04', route: 'Route A • Rapid',
+        status: 'Not Detected', rfidTag: '',             lastDetected: '--:--:--', ageSec: null }
+    ],
+    energy: { solar: 12.4, piezo: 3.8, battery: 78, voltage: 5.1, todayKwh: 0.42 },
+    latestRfidEvent: {
+      active: true, unknown: false,
+      busId: 'Solaris Express (SX-01)',
+      route: 'Route A • Express',
+      rfidTag: 'A3 F2 19 7C',
+      timestamp: '--:--:--'
+    }
+  };
+
+  /* ══════════════════════════════════════════════════════════
+     HELPERS
+     ══════════════════════════════════════════════════════════ */
+  function pad2(n) { return (n < 10 ? '0' : '') + n; }
+
+  function fmtClock(d) {
+    return pad2(d.getHours()) + ':' + pad2(d.getMinutes()) + ':' + pad2(d.getSeconds());
+  }
+
+  function esc(s) {
+    return String(s == null ? '' : s)
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+  }
+
+  function rand(min, max) { return Math.random() * (max - min) + min; }
+
+  function clamp(v, lo, hi) { return v < lo ? lo : (v > hi ? hi : v); }
+
+  function randomUid() {
+    var parts = [];
+    for (var i = 0; i < 4; i++) {
+      var h = Math.floor(Math.random() * 256).toString(16).toUpperCase();
+      if (h.length < 2) { h = '0' + h; }
+      parts.push(h);
+    }
+    return parts.join(' ');
+  }
+
+  function ageText(sec) {
+    if (sec === null || sec === undefined) { return '—'; }
+    if (sec < 60) { return sec + 's ago'; }
+    var m = Math.floor(sec / 60);
+    return m + 'm ' + (sec % 60) + 's ago';
+  }
+
+  /* ══════════════════════════════════════════════════════════
+     RENDERERS  (read ONLY from stationState)
+     ══════════════════════════════════════════════════════════ */
+
+  function renderStatusBadge() {
+    var on = stationState.online;
+    elStationBadge.className = 'status-pill ' + (on ? 'online' : 'offline');
+    elStationBadgeTx.textContent = on ? 'STATION ONLINE' : 'NO LINK';
+  }
+
+  function renderBuses() {
+    var html = '';
+    var buses = stationState.buses;
+
+    for (var i = 0; i < buses.length; i++) {
+      var b = buses[i];
+      var at = (b.status === 'At Station');
+
+      html += '<tr data-index="' + i + '" tabindex="0">' +
+        '<td class="c-id">' +
+          '<div class="bus-id">' +
+            '<span class="bus-dot' + (at ? ' on' : '') + '"></span>' +
+            '<div class="bus-id-text">' +
+              '<div class="bus-name">' + esc(b.name) + '</div>' +
+              '<div class="bus-code">' + esc(b.code) + '</div>' +
+            '</div>' +
+          '</div>' +
+        '</td>' +
+        '<td class="c-status">' +
+          '<span class="bus-status ' + (at ? 'at' : 'off') + '">' + esc(b.status) + '</span>' +
+        '</td>' +
+        '<td class="c-route">' + esc(b.route) + '</td>' +
+        '<td class="c-time">' +
+          '<span class="det-time">' + esc(b.lastDetected || '--:--:--') + '</span>' +
+          '<span class="det-age" data-age="' + i + '">' + ageText(b.ageSec) + '</span>' +
+        '</td>' +
+        '<td class="c-act">' +
+          '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" ' +
+               'stroke="currentColor" stroke-width="2.4" stroke-linecap="round" ' +
+               'stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg>' +
+        '</td>' +
+      '</tr>';
+    }
+
+    elBusTableBody.innerHTML = html;
+  }
+
+  function renderRfid() {
+    var ev = stationState.latestRfidEvent;
+
+    if (!ev || !ev.active) {
+      elRfidBox.classList.remove('active', 'unknown');
+      elRfidWaiting.hidden = false;
+      elRfidEventData.hidden = true;
+      return;
+    }
+
+    elRfidBox.classList.add('active');
+    elRfidBox.classList.toggle('unknown', !!ev.unknown);
+
+    elRfidWaiting.hidden = true;
+    elRfidEventData.hidden = false;
+
+    elRfidStateTag.textContent = ev.unknown ? 'UNKNOWN TAG' : 'BUS DETECTED';
+    elRfidStateTag.className = 'rfid-tag-badge ' + (ev.unknown ? 'bad' : 'good');
+
+    elRfidTimestamp.textContent = ev.timestamp || '--:--:--';
+    elRfidBusId.textContent = ev.unknown ? 'Unregistered Tag' : (ev.busId || '—');
+    elRfidRoute.textContent = ev.unknown ? 'Not assigned' : (ev.route || '—');
+    elRfidTag.textContent = ev.rfidTag || '—';
+  }
+
+  function renderEnergy() {
+    var e = stationState.energy;
+    var total = e.solar + e.piezo;
+    if (total <= 0) { total = 0.001; }
+
+    elValSolar.textContent = e.solar.toFixed(1) + ' W';
+    elValPiezo.textContent = e.piezo.toFixed(1) + ' W';
+    elValTotal.textContent = (e.solar + e.piezo).toFixed(1) + ' W';
+
+    elBarSolar.style.width = ((e.solar / total) * 100).toFixed(1) + '%';
+    elBarPiezo.style.width = ((e.piezo / total) * 100).toFixed(1) + '%';
+
+    elValBattery.textContent = Math.round(e.battery) + '%';
+    elValVoltage.textContent = e.voltage.toFixed(1) + ' V';
+    elValTodayEnergy.textContent = e.todayKwh.toFixed(2) + ' kWh';
+  }
+
+  /* ══════════════════════════════════════════════════════════
+     API MAPPERS  —  swap the simulation for fetch() later
+     ══════════════════════════════════════════════════════════ */
+  function applyStatus(data) {
+    if (!data) { return; }
+
+    if (typeof data.stationId === 'string') { stationState.stationId = data.stationId; }
+    if (typeof data.online === 'boolean')   { stationState.online = data.online; }
+
+    if (Array.isArray(data.buses) && data.buses.length) {
+      stationState.buses = data.buses;
+    }
+
+    if (data.energy) {
+      var k;
+      for (k in data.energy) {
+        if (Object.prototype.hasOwnProperty.call(data.energy, k) &&
+            typeof data.energy[k] === 'number') {
+          stationState.energy[k] = data.energy[k];
+        }
+      }
+    }
+
+    elStationId.textContent = stationState.stationId;
+    elFooterStation.textContent = stationState.stationId;
+
+    renderStatusBadge();
+    renderBuses();
+    renderEnergy();
+  }
+
+  function applyRfid(event) {
+    if (!event) { return; }
+    var k;
+    for (k in event) {
+      if (Object.prototype.hasOwnProperty.call(event, k)) {
+        stationState.latestRfidEvent[k] = event[k];
+      }
+    }
+    renderRfid();
+  }
+
+  /* ══════════════════════════════════════════════════════════
+     ROUTE TRACKER MODAL
+     ══════════════════════════════════════════════════════════ */
+  var modalCurrentIdx = 0;
+
+  function openBusTrackerModal(index) {
+    var bus = stationState.buses[index];
+    if (!bus) { return; }
+
+    var stops = ROUTE_STOPS[bus.code] || [];
+    var at = (bus.status === 'At Station');
+
+    /* The station itself is stop index 1 on every route. */
+    var currentIdx = at ? 1 : 0;
+    if (currentIdx > stops.length - 1) { currentIdx = stops.length - 1; }
+    modalCurrentIdx = currentIdx;
+
+    elModalBusName.textContent = bus.name;
+    elModalBusCode.textContent = bus.code;
+    elModalRouteName.textContent = bus.route;
+    elModalLiveStat.textContent = bus.status;
+    elModalLiveStat.className = at ? 'ok' : 'dim';
+    elModalLastSeen.textContent = bus.lastDetected || '—';
+
+    var html = '';
+    for (var i = 0; i < stops.length; i++) {
+      var cls, tag, eta;
+
+      if (i < currentIdx) {
+        cls = 'passed';  tag = 'Passed';       eta = 'Departed';
+      } else if (i === currentIdx) {
+        cls = 'current'; tag = at ? 'At Station' : 'Last Known';
+        eta = at ? 'Now' : 'Awaiting';
+      } else {
+        cls = 'future';  tag = 'Scheduled';
+        eta = '+' + ((i - currentIdx) * 4) + ' min';
+      }
+
+      var platform = 'Platform ' + ((i % 3) + 1);
+
+      html +=
+        '<div class="stop ' + cls + '">' +
+          '<span class="stop-node"></span>' +
+          '<div class="stop-name">' + esc(stops[i]) + '</div>' +
+          '<div class="stop-meta">' +
+            '<span>' + esc(platform) + '</span>' +
+            '<span>' + esc(eta) + '</span>' +
+          '</div>' +
+          '<span class="stop-tag">' + esc(tag) + '</span>' +
+        '</div>';
+    }
+
+    elModalStations.innerHTML = html;
+
+    positionTimeline();
+
+    elModal.classList.add('open');
+    document.body.style.overflow = 'hidden';
+  }
+
+  function positionTimeline() {
+    var stops = elModalStations.querySelectorAll('.stop');
+    if (!stops.length) { return; }
+
+    var NODE_CENTER = 13; /* node top:2px + half of 22px */
+    var firstTop = stops[0].offsetTop + NODE_CENTER;
+    var lastTop  = stops[stops.length - 1].offsetTop + NODE_CENTER;
+
+    elTlRail.style.top = firstTop + 'px';
+    elTlRail.style.height = Math.max(0, lastTop - firstTop) + 'px';
+
+    var cur = stops[modalCurrentIdx] || stops[0];
+    var curTop = cur.offsetTop + NODE_CENTER;
+
+    elModalProgress.style.top = firstTop + 'px';
+    elModalProgress.style.height = Math.max(0, curTop - firstTop) + 'px';
+  }
+
+  function closeModal() {
+    elModal.classList.remove('open');
+    document.body.style.overflow = '';
+  }
+
+  /* ══════════════════════════════════════════════════════════
+     EVENT WIRING
+     ══════════════════════════════════════════════════════════ */
+  elBusTableBody.addEventListener('click', function (e) {
+    var tr = e.target.closest ? e.target.closest('tr') : null;
+    if (!tr) { return; }
+    openBusTrackerModal(parseInt(tr.getAttribute('data-index'), 10));
+  });
+
+  elBusTableBody.addEventListener('keydown', function (e) {
+    if (e.key !== 'Enter' && e.key !== ' ') { return; }
+    var tr = e.target.closest ? e.target.closest('tr') : null;
+    if (!tr) { return; }
+    e.preventDefault();
+    openBusTrackerModal(parseInt(tr.getAttribute('data-index'), 10));
+  });
+
+  elModalClose.addEventListener('click', closeModal);
+
+  elModal.addEventListener('click', function (e) {
+    if (e.target === elModal) { closeModal(); }
+  });
+
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape' && elModal.classList.contains('open')) { closeModal(); }
+  });
+
+  window.addEventListener('resize', function () {
+    if (elModal.classList.contains('open')) { positionTimeline(); }
+  });
+
+  /* ══════════════════════════════════════════════════════════
+     SIMULATION
+     ══════════════════════════════════════════════════════════ */
+  var rfidCycle = 0;
+  var busCursor = 0;
+
+  function driftEnergy() {
+    var e = stationState.energy;
+    e.solar    = clamp(e.solar    + rand(-0.65, 0.65), 8.0, 18.0);
+    e.piezo    = clamp(e.piezo    + rand(-0.38, 0.38), 1.5,  6.5);
+    e.battery  = clamp(e.battery  + rand(-0.22, 0.30), 35, 100);
+    e.voltage  = clamp(e.voltage  + rand(-0.02, 0.02), 4.6,  5.4);
+    e.todayKwh = clamp(e.todayKwh + rand(0.0010, 0.0042), 0, 99);
+  }
+
+  function updateAges() {
+    var buses = stationState.buses;
+    var cells = document.querySelectorAll('[data-age]');
+
+    for (var i = 0; i < buses.length; i++) {
+      if (buses[i].ageSec === null || buses[i].ageSec === undefined) { continue; }
+      buses[i].ageSec++;
+    }
+
+    for (var j = 0; j < cells.length; j++) {
+      var idx = parseInt(cells[j].getAttribute('data-age'), 10);
+      if (buses[idx]) { cells[j].textContent = ageText(buses[idx].ageSec); }
+    }
+  }
+
+  function simulateRfid() {
+    rfidCycle++;
+    var now = new Date();
+    var t = fmtClock(now);
+
+    /* Every 3rd cycle → unknown tag warning state */
+    if (rfidCycle % 3 === 0) {
+      applyRfid({
+        active: true,
+        unknown: true,
+        busId: 'Unregistered Tag',
+        route: 'Not assigned',
+        rfidTag: randomUid(),
+        timestamp: t
+      });
+      return;
+    }
+
+    var buses = stationState.buses;
+    var bus = buses[busCursor % buses.length];
+    busCursor++;
+
+    for (var i = 0; i < buses.length; i++) {
+      buses[i].status = 'Not Detected';
+      buses[i].ageSec = null;
+    }
+
+    bus.status = 'At Station';
+    bus.ageSec = 0;
+    bus.lastDetected = t;
+    bus.rfidTag = randomUid();
+
+    renderBuses();
+
+    applyRfid({
+      active: true,
+      unknown: false,
+      busId: bus.name + ' (' + bus.code + ')',
+      route: bus.route,
+      rfidTag: bus.rfidTag,
+      timestamp: t
+    });
+  }
+
+  function tick() {
+    elClock.textContent = fmtClock(new Date());
+    updateAges();
+    driftEnergy();
+    renderEnergy();
+  }
+
+  /* ══════════════════════════════════════════════════════════
+     PRELOADER CONTROL
+     ══════════════════════════════════════════════════════════ */
+  function hidePreloader() {
+    if (!elPreloader || elPreloader.classList.contains('hidden')) { return; }
+    elPreloader.classList.add('hidden');
+    elAppContent.classList.add('ready');
+  }
+
+  /* ══════════════════════════════════════════════════════════
+     BOOT
+     ══════════════════════════════════════════════════════════ */
+  function init() {
+    var t = fmtClock(new Date());
+
+    stationState.buses[0].lastDetected = t;
+    stationState.latestRfidEvent.timestamp = t;
+    stationState.latestRfidEvent.rfidTag = stationState.buses[0].rfidTag;
+
+    elStationId.textContent = stationState.stationId;
+    elFooterStation.textContent = stationState.stationId;
+    elClock.textContent = t;
+
+    renderStatusBadge();
+    renderBuses();
+    renderRfid();
+    renderEnergy();
+
+    setInterval(tick, 1000);
+    setInterval(simulateRfid, 8000);
+  }
+
+  try {
+    init();
+  } catch (err) {
+    /* Never leave the user stuck behind the loader */
+    hidePreloader();
+    if (window.console && console.error) { console.error(err); }
+  }
+
+  /* Reveal after ~1.5s, with a 2.5s failsafe */
+  if (document.readyState === 'complete') {
+    setTimeout(hidePreloader, 1500);
+  } else {
+    window.addEventListener('load', function () { setTimeout(hidePreloader, 1500); });
+  }
+  setTimeout(hidePreloader, 2500);
+
+})();
+</script>
+</body>
+</html>
